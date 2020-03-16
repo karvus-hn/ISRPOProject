@@ -21,26 +21,53 @@
 
     $(document).ready(function(){
         $(".js").click(function(){
-            //var item=$(this).closest('detail-window')[0];
-            //item.hide();
             $(".detail-window").hide();
             $(".js").hide();
         });
 
         $(".close-detail").click(function(){
-            //var item=$(this).closest('detail-window')[0];
-            //item.hide();
             $($(this).closest('.cont-restaurant')[0].children[4]).hide();
-            //$(".detail-window").hide();
             $(".open-map").hide();
             $(".js").hide();
         });
 
         $(".detail-button").click(function(){
-            //var item=$(this).closest('detail-window')[0];
-            $($(this).closest('.cont-restaurant')[0].children[4]).show();
-            //item.show();
-            //$(".detail-window").show();
+            $($(this).closest('.cont-restaurant')[0].children[3]).show();
+            $(".open-map").show();
+            {
+                let coordsar = $($(this).closest('.cont-restaurant').find('.detail-window')[0]).find('.coords').get();
+                var lat=56.1446;
+                var lng=47.2463;
+                var desc=$(this).closest('.cont-restaurant')[0].children[0].textContent ;
+                var mapid=$($(this).closest('.cont-restaurant')[0].children[3]).find('.open-map')[0].id;
+                var old_element = document.getElementById(mapid);
+                var new_element = old_element.cloneNode(true);
+                old_element.parentNode.replaceChild(new_element, old_element);
+                document.getElementById(mapid).innerHTML=null;
+                $(document.getElementById(mapid)).off();
+                var container = L.DomUtil.get(mapid); if(container != null){ container._leaflet_id = null; }
+                {
+                    const map = L.map(mapid).setView([lat, lng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                    map._onResize();
+                    coordsar.forEach(element=>{
+                        lat=parseFloat(element.dataset.lat) ;
+                        lng=parseFloat(element.dataset.lng) ;
+
+                        var popupLocation1 = new L.LatLng(lat, lng);
+                        var popupContent1 = desc;
+
+                        var popup1 = new L.Popup();
+                        popup1.setLatLng(popupLocation1);
+                        popup1.setContent(popupContent1);
+                        var marker=L.marker([lat, lng]).addTo(map);
+                        marker.bindPopup(popup1);
+                        popup1.openOn(map);
+                    });
+                }
+            }
             $(".js").show();
         });
     });
@@ -54,22 +81,30 @@
             $(".open-map").hide();
         });
         $(".open-map-button").click(function(){
-            var lat=parseFloat(this.dataset.lat) ;
-            var lng=parseFloat(this.dataset.lng) ;
+            let coordsar = $(this.closest('.detail-window')).find('.coords').get();
+            var lat=0;
+            var lng=0;
             var desc=$(this).closest('.cont-restaurant')[0].children[0].textContent ;
-            // $(document.getElementsByClassName("open-map-button")[0].closest('.cont-restaurant').children[4]).find('.open-map')[0].id
-            var mapid=$($(this).closest('.cont-restaurant')[0].children[4]).find('.open-map')[0].id;
+            var mapid=$($(this).closest('.cont-restaurant')[0].children[3]).find('.open-map')[0].id;
+            var old_element = document.getElementById(mapid);
+            var new_element = old_element.cloneNode(true);
+            old_element.parentNode.replaceChild(new_element, old_element);
             document.getElementById(mapid).innerHTML=null;
             var container = L.DomUtil.get(mapid); if(container != null){ container._leaflet_id = null; }
             {
-                var map = L.map(mapid).setView([lat, lng], 13);
+                const map = L.map(mapid).setView([56.1446, 47.2463], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
                 map._onResize();
+                coordsar.forEach(element=>{
+                    lat=parseFloat(element.dataset.lat) ;
+                    lng=parseFloat(element.dataset.lng) ;
                     L.marker([lat, lng]).addTo(map)
                         .bindPopup(desc)
                         .openPopup();
+                });
+
             }
             $(".open-map").show();
         });
@@ -104,8 +139,7 @@
         <p class="msc" > Подходящие <em>вам</em> заведения: </p>
         {% for item in r_lst %}
             <div class="cont-restaurant">
-                <p class="rest-name"> {{item['rest'].name}},</p>
-                <p class="rest-addr"> {{item['rest'].address}}</p>
+                <p class="rest-name"> {{item['rest'].name}}</p>
                 <P> Итого : {{item['total']}} </P>
                 <div class="cont-search" >
                     <a  class="detail-button" > Подробнее </a>
@@ -121,13 +155,20 @@
                             </tr>
                             <tr>
                                 <td>
-                                    <p> {{item['rest'].address}}</p>
+                                    <p> Адреса: </p>
                                 </td>
                             </tr>
+                            {% for i in item['ll'] %}
                             <tr>
                                 <td>
-                                    {% set coords = item['rest'].coord.split(' ') %}
-                                    <a href="#" data-lat="{{coords[0]}}" data-lng="{{coords[1]}}" class="open-map-button"> Показать на карте </a>
+                                    {% set coords = i.coord.split(',',2) %}
+                                    <p class="coords" data-lat="{{coords[0]}}" data-lng="{{coords[1]}}" > {{i.address}}</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr>
+                                <td>
+                                    <!--<a href="#" class="open-map-button"> Показать на карте </a>-->
                                     <div class="open-map" id="leafletmap{{item['rest'].id}}">
                                     </div>
                                 </td>
@@ -159,17 +200,7 @@
                         </tr>
                         </tbody>
                     </table>
-                    <!--<p> {{item['rest'].name}} </p>-->
-                    <!--<p> {{item['rest'].address}}</p>-->
-                    <!--{% set coords = item['rest'].coord.split(' ') %}-->
-                    <!--<a href="#" data-lat="{{coords[0]}}" data-lng="{{coords[1]}}" class="open-map-button"> Показать на карте </a>-->
-                    <!--    <div class="open-map" id="leafletmap{{item['rest'].id}}">-->
-                    <!--    </div>-->
-                    <!--<div class="dish-item-cost">-->
-                    <!--    {% for d in item['dl'] %}-->
-                    <!--        <p>{{ d[0] }} {{d[2]}} * {{d[1]}} руб</p>-->
-                    <!--    {% endfor %}-->
-                    <!--</div>-->
+
                     <a href="#" class="close-detail"> &#10006; </a>
                 </div>
                 <div class="js"></div>

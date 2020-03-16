@@ -8,6 +8,7 @@
         margin:-200px -400px;
         display:none;
         z-index:11;
+        border-radius: 3px;
       }
 .detail-window p{
     /*margin:20px;*/

@@ -82,26 +82,34 @@ class MyModelView(sqla.ModelView):
                     return redirect(url_for('security.login', next=request.url))
 
 class Dish(db.Model):
-    __tablename__='Dish'
+    __tablename__ = 'Dish'
     id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String()) 
+    name = db.Column(db.String(), nullable=False)
     desc = db.Column(db.String())
     image = db.Column(db.String())
     category_id = db.Column(db.Integer(), ForeignKey('Category.id'))
-    dish = db.relationship("Category")
-      
+    category = db.relationship("Category")
+
     def __str__(self):
         return "{}".format(self.name)
 
-
-class Restaurant(db.Model):
-    __tablename__='Restaurant'
+class RestAddress(db.Model):
+    __tablename__ = 'RestAddress'
     id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String())
     address = db.Column(db.String())
     phone = db.Column(db.String())
     coord = db.Column(db.String())
     image = db.Column(db.String())
+    rest_id = db.Column(db.Integer(), ForeignKey('Restaurant.id'))
+    restaurant = db.relationship("Restaurant")
+
+    def __str__(self):
+            return "{}".format(self.address)
+
+class Restaurant(db.Model):
+    __tablename__ = 'Restaurant'
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String())
 
     def __str__(self):
         return "{}".format(self.name)
@@ -146,8 +154,9 @@ admin = Admin(app)
 security = Security(app, user_datastore)
 
 admin.add_view(MyModelView(Menu_str, db.session))
+admin.add_view(MyImageView(RestAddress, db.session))
 admin.add_view(MyImageView(Dish, db.session))
-admin.add_view(MyImageView(Restaurant, db.session))
+admin.add_view(MyModelView(Restaurant, db.session))
 admin.add_view(MyModelView(Category, db.session))
 admin.add_view(MyModelView(User, db.session))
 admin.add_view(MyModelView(Role, db.session))
@@ -187,6 +196,7 @@ def search_place():
     lst=session['cart']
     queryA=db.session.query(Restaurant.id)
     queryA=queryA.join(Menu_str, Menu_str.restaurant_id == Restaurant.id)
+    queryD=db.session.query(Restaurant,RestAddress).filter(Restaurant.id==RestAddress.rest_id)
     data = json.loads(lst)
     q_lst=[]
     for item in data:
@@ -195,28 +205,33 @@ def search_place():
     rez=db.session.execute(queryB).fetchall()
     cat = db.session.query(Category).all()
     if len(rez)==0:
-        return render_template('cart.html', catlst=cat, cart=[],r_lst=[],mode=False)
+        return render_template('found_restaurant.html', catlst=cat, cart=[],r_lst=[],mode=False)
     else:
         queryC=db.session.query(Restaurant)
         f_rez=[]
         for r in rez:
             rest=queryC.filter(Restaurant.id==int(r[0])).first()
+            rcl=queryD.filter(Restaurant.id==int(r[0])).all()
             #f_rez.append(rest)
             pr=0
             owc=[]
+            owl=[]
+            for e,c in rcl:
+                owl.append(c)
             for item in data:
                 pr=pr+int(item["quantity"])* (db.session.query(Menu_str.cost).filter(Menu_str.dish_id==int(item["dish"])).filter(Menu_str.restaurant_id==int(r[0])).first()[0])
                 owp=(db.session.query(Menu_str.cost).filter(Menu_str.dish_id==int(item["dish"])).filter(Menu_str.restaurant_id==int(r[0])).first()[0])
                 own=db.session.query(Dish.name).filter(Dish.id==int(item["dish"])).first()[0]
                 owq=int(item["quantity"])
                 owc.append([own,owp,owq])
-            f_rez.append({'rest':rest,'total':pr,'dl':owc})
+            f_rez.append({'rest':rest,'total':pr,'dl':owc,'ll':owl})
         query = db.session.query(Dish)
         dish_cart_list = []
         for item in data:
             cart_dish_id = item["dish"]
             dishes = query.filter(Dish.id == int(cart_dish_id)).all()
             dish_cart_list.append(dishes[0])
+        f_rez=sorted(f_rez,key = lambda x : x['total'])
         return render_template('found_restaurant.html', catlst=cat, cart=dish_cart_list, r_lst=f_rez)
         #return render_template('cart.html', catlst=cat, cart=[],r_lst=f_rez,mode=False)
     return redirect(url_for('cart'))
